@@ -6,8 +6,8 @@ const token = process.argv[2];
 const vkToken = process.argv[3];
 const chatId = process.argv[4];
 
-let confMsg = [];
-
+let ts = 0;
+let failed = false;
 
 const bot = new TelegramBot(token, { polling: true });
 
@@ -25,7 +25,6 @@ bot.onText(/\/checkgroups(.+)/, (msg, match) => {
 });
 bot.onText(/\/countgroupsmsg/, (msg, match) => {
     let xhr = new XMLHttpRequest();
-    console.log("sss");
     xhr.open('GET', "https://api.vk.com/method/messages.getConversations?access_token=" + vkToken + "&filter=unread&v=5.92", true);
     //xhr.open('GET', "https://api.vk.com/method/messages.getConversations?access_token=" + vkToken + "&filter=all&v=5.92", true);
 
@@ -66,7 +65,10 @@ function init() {
     const serverInfo = JSON.parse(xhr.responseText)["response"];
     const longPollKey = serverInfo["key"];
     const longPollServer = serverInfo["server"];
-    let ts = serverInfo["ts"];
+    if (!failed) {
+        ts = serverInfo["ts"];
+    }
+    failed = false;
     const getUpdates = () => {
         console.log("call getUpdates");
         let newXhr = new XMLHttpRequest();
@@ -76,6 +78,10 @@ function init() {
         newXhr.onload = () => {
             const responseLongPoll = JSON.parse(newXhr.responseText);
             console.log("onload", newXhr.responseText);
+            if (responseLongPoll["failed"]) {
+                failed = true;
+                return;
+            }
             ts = responseLongPoll["ts"];
             if (responseLongPoll.updates != undefined && responseLongPoll.updates.length != 0) {
                 for (let i = 0; i < responseLongPoll.updates.length; ++i) {
@@ -99,10 +105,25 @@ function init() {
         }
         newXhr.ontimeout = () => {
             console.log("ontimeout", newXhr.responseText);
+            if (JSON.parse(xhr.responseText)["failed"]) {
+                failed = true;
+                return;
+            }
             getUpdates();
         }
     };
-    getUpdates();
+    if (!failed) {
+        getUpdates();
+    }
 
 }
+
+//first start
 init();
+
+//for failed requests
+setInterval(() => {
+    if (failed) {
+        init();
+    }
+}, 2000);
