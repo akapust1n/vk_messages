@@ -94,8 +94,12 @@ function init() {
                             userXhr.open('GET', `https://api.vk.com/method/users.get?access_token=${vkToken}&user_ids=${update[3]}&v=5.92`, true);
                             userXhr.send();
                             userXhr.onload = () => {
-                                const msg = JSON.parse(userXhr.responseText)["response"][0];
-                                bot.sendMessage(chatId, `[${msg["first_name"]} ${msg["last_name"]}] \n ${update[5]}`);
+                                const response = JSON.parse(userXhr.responseText)["response"];
+                                if (response) {
+                                    const msg = JSON.parse(userXhr.responseText)["response"][0];
+
+                                    bot.sendMessage(chatId, `[${msg["first_name"]} ${msg["last_name"]}] \n ${update[5]}`);
+                                }
                             }
                         }
                     }
